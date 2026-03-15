@@ -5,9 +5,10 @@ WORKDIR /app
 # Fix Python module path
 ENV PYTHONPATH=/app
 
-# Install system dependencies
+# Install system dependencies (libpq-dev for psycopg2, build-essential for C extensions)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
