@@ -46,6 +46,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     logger.info(f"Starting Job Application OS ({settings.ENVIRONMENT})")
 
+    # Force IPv4 for Supabase connections (Render has IPv4-only networking)
+    import asyncio
+
+    from app.db.session import _patch_loop_for_ipv4
+
+    _patch_loop_for_ipv4(asyncio.get_running_loop())
+
     # Run migrations after server is listening (networking is ready)
     await _run_migrations()
 
