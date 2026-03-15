@@ -1,6 +1,19 @@
 version: "3.8"
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - fastapi
+    restart: unless-stopped
+
   fastapi:
     build: .
     ports:
@@ -33,5 +46,20 @@ services:
       - redis
     command: celery -A app.tasks.celery_app beat --loglevel=info
 
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    env_file: .env
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: unless-stopped
+
 volumes:
   redis-data:
+  caddy-data:
+  caddy-config:

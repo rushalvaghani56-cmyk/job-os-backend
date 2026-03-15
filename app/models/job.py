@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -75,8 +75,8 @@ class Job(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     __table_args__ = (
-        Index("ix_jobs_user_score", "user_id", "is_deleted"),
+        Index("ix_jobs_user_score", "user_id", "is_deleted", text("score DESC")),
         Index("ix_jobs_user_status", "user_id", "status"),
-        Index("ix_jobs_user_created", "user_id", "created_at"),
+        Index("ix_jobs_user_created", "user_id", text("created_at DESC")),
         Index("ix_jobs_search", "search_vector", postgresql_using="gin"),
     )
