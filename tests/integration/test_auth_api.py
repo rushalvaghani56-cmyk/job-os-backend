@@ -8,12 +8,11 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import AppError, ErrorCode
 from app.models.user import User, UserRole
-
 
 SIGNUP_URL = "/api/v1/auth/signup"
 LOGIN_URL = "/api/v1/auth/login"
@@ -109,7 +108,7 @@ async def test_signup_duplicate_email(
     with patch(
         "app.services.auth_service.supabase_signup",
         new_callable=AsyncMock,
-        side_effect=Exception("User already registered"),
+        side_effect=AppError(code=ErrorCode.RESOURCE_ALREADY_EXISTS, message="User already registered"),
     ):
         resp2 = await async_client.post(
             SIGNUP_URL,
@@ -161,7 +160,7 @@ async def test_login_wrong_password(async_client: AsyncClient):
     with patch(
         "app.services.auth_service.supabase_login",
         new_callable=AsyncMock,
-        side_effect=Exception("Invalid login credentials"),
+        side_effect=AppError(code=ErrorCode.AUTH_INVALID_TOKEN, message="Invalid email or password"),
     ):
         resp = await async_client.post(
             LOGIN_URL,

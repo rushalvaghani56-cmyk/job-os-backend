@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from fastapi import Request
@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     AUTH_TOKEN_EXPIRED = "AUTH_TOKEN_EXPIRED"
     AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
@@ -21,6 +21,7 @@ class ErrorCode(str, Enum):
     RESOURCE_ALREADY_EXISTS = "RESOURCE_ALREADY_EXISTS"
     TASK_FAILED = "TASK_FAILED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
 
 
 ERROR_CODE_TO_HTTP_STATUS: dict[ErrorCode, int] = {
@@ -38,6 +39,7 @@ ERROR_CODE_TO_HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.RESOURCE_ALREADY_EXISTS: 409,
     ErrorCode.TASK_FAILED: 500,
     ErrorCode.INTERNAL_ERROR: 500,
+    ErrorCode.NOT_IMPLEMENTED: 501,
 }
 
 
@@ -100,6 +102,21 @@ async def validation_error_handler(
             message="Invalid input",
             details=details,
         ),
+    )
+
+
+async def not_implemented_handler(request: Request, exc: NotImplementedError) -> JSONResponse:
+    from loguru import logger
+
+    logger.info(f"Unimplemented endpoint hit: {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=501,
+        content={
+            "error": {
+                "code": "NOT_IMPLEMENTED",
+                "message": "This endpoint is not yet implemented. It is scheduled for a future sprint.",
+            }
+        },
     )
 
 

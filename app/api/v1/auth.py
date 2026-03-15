@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.core.exceptions import AppError, ErrorCode
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
@@ -26,19 +25,7 @@ router = APIRouter(prefix="/auth")
 @router.post("/signup", status_code=status.HTTP_201_CREATED, response_model=AuthResponse)
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     """Register a new user via Supabase Auth and create a local record."""
-    try:
-        supa_resp = await auth_service.supabase_signup(body.email, body.password)
-    except Exception as exc:
-        msg = str(exc).lower()
-        if "already" in msg or "duplicate" in msg or "registered" in msg:
-            raise AppError(
-                code=ErrorCode.RESOURCE_ALREADY_EXISTS,
-                message="A user with this email already exists",
-            )
-        raise AppError(
-            code=ErrorCode.INTERNAL_ERROR,
-            message=f"Signup failed: {exc}",
-        )
+    supa_resp = await auth_service.supabase_signup(body.email, body.password)
 
     supabase_uid = supa_resp["user"]["id"]
 
@@ -60,13 +47,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate via Supabase Auth and return user + session."""
-    try:
-        supa_resp = await auth_service.supabase_login(body.email, body.password)
-    except Exception:
-        raise AppError(
-            code=ErrorCode.AUTH_INVALID_TOKEN,
-            message="Invalid email or password",
-        )
+    supa_resp = await auth_service.supabase_login(body.email, body.password)
 
     supabase_uid = supa_resp["user"]["id"]
     user = await auth_service.get_user_by_supabase_uid(db, supabase_uid)
@@ -102,8 +83,10 @@ async def logout(
     token = (authorization or "").removeprefix("Bearer ").strip()
     try:
         await auth_service.supabase_logout(token)
-    except Exception:
-        pass  # Best-effort logout; token will expire naturally
+    except Exception as exc:
+        from loguru import logger
+
+        logger.warning(f"Logout revocation failed (best-effort): {exc}")
     return SuccessResponse()
 
 
@@ -113,13 +96,7 @@ async def refresh(
     current_user: User = Depends(get_current_user),
 ):
     """Refresh the session via Supabase Auth."""
-    try:
-        result = await auth_service.supabase_refresh(body.refresh_token)
-    except Exception:
-        raise AppError(
-            code=ErrorCode.AUTH_INVALID_TOKEN,
-            message="Token refresh failed",
-        )
+    result = await auth_service.supabase_refresh(body.refresh_token)
     return SessionResponse(session=SessionSchema(**result["session"]))
 
 

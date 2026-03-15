@@ -66,8 +66,12 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             await pipe.execute()
         except AppError:
             raise
-        except Exception:
-            # If Redis is unavailable, allow the request through
-            pass
+        except Exception as exc:
+            from loguru import logger
+
+            logger.warning(
+                f"Rate limiter Redis error (allowing request through): {exc}",
+                extra={"path": request.url.path},
+            )
 
         return await call_next(request)

@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +11,7 @@ from app.core.exceptions import (
     AppError,
     app_error_handler,
     generic_error_handler,
+    not_implemented_handler,
     validation_error_handler,
 )
 from app.core.logging import setup_logging
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     # --- Exception handlers ---
     application.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
     application.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
+    application.add_exception_handler(NotImplementedError, not_implemented_handler)  # type: ignore[arg-type]
     application.add_exception_handler(Exception, generic_error_handler)  # type: ignore[arg-type]
 
     # --- Middleware chain (order matters: last added = first executed) ---
@@ -56,8 +58,10 @@ def create_app() -> FastAPI:
         from app.db.redis import redis_client
 
         application.add_middleware(RateLimiterMiddleware, redis=redis_client)
-    except Exception:
-        pass  # Skip rate limiting if Redis is unavailable
+    except Exception as exc:
+        from loguru import logger
+
+        logger.warning(f"Rate limiting DISABLED — Redis unavailable: {exc}")
 
     # Order 1: CORS
     origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
