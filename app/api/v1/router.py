@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.admin import router as admin_router
 from app.api.v1.ai import router as ai_router
+from app.api.v1.education import router as education_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.applications import router as applications_router
 from app.api.v1.auth import router as auth_router
@@ -17,6 +18,8 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.outreach import router as outreach_router
 from app.api.v1.profiles import router as profiles_router
 from app.api.v1.review import router as review_router
+from app.api.v1.skills import router as skills_router
+from app.api.v1.work_experience import router as work_experience_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
@@ -36,4 +39,7 @@ api_v1_router.include_router(ai_router, tags=["ai"])
 api_v1_router.include_router(files_router, tags=["files"])
 api_v1_router.include_router(copilot_router, tags=["copilot"])
 api_v1_router.include_router(notifications_router, tags=["notifications"])
+api_v1_router.include_router(skills_router, tags=["skills"])
+api_v1_router.include_router(work_experience_router, tags=["work-experience"])
+api_v1_router.include_router(education_router, tags=["education"])
 api_v1_router.include_router(admin_router, tags=["admin"])

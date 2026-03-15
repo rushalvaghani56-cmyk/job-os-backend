@@ -16,7 +16,10 @@ from app.db.session import get_db
 from app.main import app
 from app.models.user import User, UserRole
 from app.models.profile import Profile
+from app.models.education import Education
 from app.models.job import Job
+from app.models.skill import Skill
+from app.models.work_experience import WorkExperience
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

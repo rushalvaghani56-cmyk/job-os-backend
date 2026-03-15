@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.exceptions import AppError, ErrorCode
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.common import DataResponse, PaginatedResponse, TaskResponse
@@ -20,6 +21,7 @@ from app.schemas.job import (
     JobResponse,
     JobStatusUpdate,
 )
+from app.services import job_service
 
 router = APIRouter(prefix="/jobs")
 
@@ -35,9 +37,22 @@ async def list_jobs(
     profile_id: uuid.UUID | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> PaginatedResponse[JobResponse]:
+) -> dict:
     """List jobs with cursor pagination and filters."""
-    raise NotImplementedError
+    filters = {}
+    if status_filter:
+        filters["status"] = status_filter
+    if min_score is not None:
+        filters["min_score"] = min_score
+    if company:
+        filters["company"] = company
+    if profile_id:
+        filters["profile_id"] = profile_id
+
+    jobs, next_cursor, has_more = await job_service.list_jobs(
+        db, current_user.id, cursor, limit, sort, filters
+    )
+    return {"data": jobs, "next_cursor": next_cursor, "has_more": has_more}
 
 
 @router.get("/search", response_model=DataResponse[list[JobResponse]])
@@ -46,9 +61,10 @@ async def search_jobs(
     limit: int = Query(default=20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DataResponse[list[JobResponse]]:
+) -> dict:
     """Full-text search across jobs."""
-    raise NotImplementedError
+    jobs = await job_service.search_jobs(db, current_user.id, q, limit)
+    return {"data": jobs}
 
 
 @router.get("/{job_id}", response_model=DataResponse[JobResponse])
@@ -56,19 +72,27 @@ async def get_job(
     job_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DataResponse[JobResponse]:
+) -> dict:
     """Get a single job by ID."""
-    raise NotImplementedError
+    job = await job_service.get_job(db, current_user.id, job_id)
+    if job is None:
+        raise AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Job not found")
+    return {"data": job}
 
 
-@router.post("/manual", status_code=status.HTTP_201_CREATED, response_model=DataResponse[JobResponse])
+@router.post(
+    "/manual",
+    status_code=status.HTTP_201_CREATED,
+    response_model=DataResponse[JobResponse],
+)
 async def create_job_manual(
     body: JobCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DataResponse[JobResponse]:
-    """Manually add a job from URL or raw text."""
-    raise NotImplementedError
+) -> dict:
+    """Manually add a job."""
+    job = await job_service.create_job_manual(db, current_user.id, body)
+    return {"data": job}
 
 
 @router.put("/{job_id}/status", response_model=DataResponse[JobResponse])
@@ -77,9 +101,14 @@ async def update_job_status(
     body: JobStatusUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DataResponse[JobResponse]:
+) -> dict:
     """Update a job's status."""
-    raise NotImplementedError
+    job = await job_service.update_job_status(
+        db, current_user.id, job_id, body.status
+    )
+    if job is None:
+        raise AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Job not found")
+    return {"data": job}
 
 
 @router.post("/{job_id}/bookmark", response_model=DataResponse[JobResponse])
@@ -87,9 +116,12 @@ async def bookmark_job(
     job_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DataResponse[JobResponse]:
+) -> dict:
     """Bookmark a job."""
-    raise NotImplementedError
+    job = await job_service.bookmark_job(db, current_user.id, job_id)
+    if job is None:
+        raise AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Job not found")
+    return {"data": job}
 
 
 @router.post("/{job_id}/skip", response_model=DataResponse[JobResponse])
@@ -97,9 +129,12 @@ async def skip_job(
     job_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DataResponse[JobResponse]:
+) -> dict:
     """Skip a job."""
-    raise NotImplementedError
+    job = await job_service.skip_job(db, current_user.id, job_id)
+    if job is None:
+        raise AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Job not found")
+    return {"data": job}
 
 
 @router.post("/{job_id}/score", response_model=TaskResponse)

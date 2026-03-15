@@ -43,6 +43,7 @@ class JobResponse(BaseModel):
     decision: str | None = None
     decision_reasoning: str | None = None
     skills_required: list = []
+    skills_preferred: list = []
     skills_matched: list = []
     skills_missing: list = []
     status: str
@@ -56,9 +57,18 @@ class JobResponse(BaseModel):
 class JobCreate(BaseModel):
     """Manual job creation — POST /jobs/manual."""
 
-    url: str | None = None
-    raw_text: str | None = None
     profile_id: uuid.UUID
+    title: str = Field(..., max_length=500)
+    company: str = Field(..., max_length=255)
+    location: str | None = None
+    location_type: str | None = None
+    seniority: str | None = None
+    employment_type: str | None = None
+    description: str | None = None
+    apply_url: str | None = None
+    salary_min: int | None = None
+    salary_max: int | None = None
+    salary_currency: str | None = None
 
 
 class JobStatusUpdate(BaseModel):
