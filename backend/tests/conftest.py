@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from jose import jwt
-from sqlalchemy import StaticPool
+from sqlalchemy import JSON, StaticPool, Text, event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
@@ -20,6 +20,27 @@ from app.models.job import Job
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# ---------------------------------------------------------------------------
+# SQLite compatibility: remap PostgreSQL-specific column types
+# ---------------------------------------------------------------------------
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+
+@event.listens_for(Base.metadata, "column_reflect")
+def _remap_pg_types(inspector, table, column_info):
+    if isinstance(column_info["type"], (JSONB,)):
+        column_info["type"] = JSON()
+
+# Compile-time overrides so CREATE TABLE works with SQLite
+from sqlalchemy.ext.compiler import compiles
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(element, compiler, **kw):
+    return "JSON"
+
+@compiles(TSVECTOR, "sqlite")
+def _compile_tsvector_sqlite(element, compiler, **kw):
+    return "TEXT"
 
 
 @pytest.fixture(scope="session")
