@@ -39,11 +39,20 @@ def verify_jwt(token: str) -> dict:
         secret[-4:],
     )
 
+    # Determine the algorithm from the token header so we accept whatever
+    # Supabase is actually signing with (HS256, HS384, HS512, etc.)
+    try:
+        token_alg = jwt.get_unverified_header(token).get("alg", "HS256")
+    except Exception:
+        token_alg = "HS256"
+    allowed_algs = list({token_alg, "HS256"})
+    logger.debug("JWT decode: token_alg={} allowed={}", token_alg, allowed_algs)
+
     try:
         payload = jwt.decode(
             token,
             secret,
-            algorithms=["HS256"],
+            algorithms=allowed_algs,
             audience="authenticated",
         )
         if "sub" not in payload:
